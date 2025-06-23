@@ -18,10 +18,13 @@ async function getAccessToken() {
 }
 
 export default async function handler(req, res) {
+    console.log('📩 Nueva request recibida:', req.method, req.body);
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
     const { tokens, title, body, data } = req.body; 
+    console.log('🟡Tokens recibidos:', tokens);
+    console.log('🟡Title:', title, 'Body:', body, 'Data:', data);
 
     if (!tokens || !title || !body) {
       return res.status(400).json({ error: 'Faltan datos requeridos.' });
@@ -57,6 +60,8 @@ export default async function handler(req, res) {
     res.status(200).json({ success: true, results });
   } catch (err) {
     console.error(err);
+    console.error('❌ Error en send-push API:', err);
+
     res.status(500).json({ success: false, error: err.message });
   }
 }
