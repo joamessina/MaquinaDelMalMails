@@ -5,20 +5,17 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Manejar preflight (OPTIONS)
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-  
+
   if (req.method !== 'POST') {
     res.status(405).send('Método no permitido');
     return;
   }
 
-  // Asume JSON en el body
   let body = req.body;
-  // Vercel a veces parsea diferente el body en serverless, por si acaso:
   if (typeof body === 'string') {
     try {
       body = JSON.parse(body);
@@ -29,13 +26,11 @@ module.exports = async (req, res) => {
   }
 
   const { to, subject, text, html } = body || {};
-
   if (!to || !subject || (!text && !html)) {
     res.status(400).json({ error: 'Faltan datos requeridos' });
     return;
   }
 
-  // Transport Nodemailer (ejemplo Gmail, luego puedes cambiarlo a SendGrid/Mailgun)
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
