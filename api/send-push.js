@@ -1,22 +1,29 @@
 import { google } from 'googleapis';
 import fetch from 'node-fetch';
 
-const serviceAccount = {
-  type: process.env.GOOGLE_TYPE,
-  project_id: process.env.GOOGLE_PROJECT_ID,
-  private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-  private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  client_email: process.env.GOOGLE_CLIENT_EMAIL,
-  client_id: process.env.GOOGLE_CLIENT_ID,
-  auth_uri: process.env.GOOGLE_AUTH_URI,
-  token_uri: process.env.GOOGLE_TOKEN_URI,
-  auth_provider_x509_cert_url: process.env.GOOGLE_AUTH_PROVIDER_X509_CERT_URL,
-  client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL,
-  universe_domain: process.env.GOOGLE_UNIVERSE_DOMAIN
-};
+// Leemos el JSON entero del service account desde la variable de entorno
+let serviceAccount;
+try {
+  serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+  console.log('🟢 JSON del serviceAccount cargado OK');
+} catch (err) {
+  console.error('🔴 Error parseando GOOGLE_SERVICE_ACCOUNT:', err);
+  serviceAccount = {};
+}
+
+// Fix para el caso de que los saltos sean literales "\n"
+if (serviceAccount.private_key && serviceAccount.private_key.includes('\\n')) {
+  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  console.log('🟡 Fix aplicado a private_key');
+}
+
+// Logs para verificar datos críticos
+console.log('🔑 Email:', serviceAccount.client_email);
+console.log('🔑 Tiene private_key:', !!serviceAccount.private_key);
+console.log('🔑 Project ID:', serviceAccount.project_id);
+
 const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
 const projectId = serviceAccount.project_id;
-console.log('ServiceAccount env (start):', process.env.GOOGLE_SERVICE_ACCOUNT); // Solo el principio, para no mostrar la clave entera
 
 async function getAccessToken() {
   const jwtClient = new google.auth.JWT(
@@ -27,19 +34,23 @@ async function getAccessToken() {
     null
   );
   const tokens = await jwtClient.authorize();
+  console.log('🟢 Token JWT generado');
   return tokens.access_token;
 }
 
 export default async function handler(req, res) {
-    console.log('📩 Nueva request recibida:', req.method, req.body);
-  if (req.method !== 'POST') return res.status(405).end();
+  console.log('📩 Nueva request recibida:', req.method, req.body);
+
+  if (req.method !== 'POST') {
+    console.warn('⛔ Método no permitido');
+    return res.status(405).end();
+  }
 
   try {
-    const { tokens, title, body, data } = req.body; 
-    //console.log('🟡Tokens recibidos:', tokens);
-    //console.log('🟡Title:', title, 'Body:', body, 'Data:', data);
+    const { tokens, title, body, data } = req.body;
 
     if (!tokens || !title || !body) {
+      console.warn('⛔ Faltan datos requeridos en la request');
       return res.status(400).json({ error: 'Faltan datos requeridos.' });
     }
 
@@ -67,14 +78,13 @@ export default async function handler(req, res) {
         body: JSON.stringify(message)
       });
       const fcmData = await fcmRes.json();
+      console.log(`📤 Push enviada a: ${token} → Respuesta FCM:`, fcmData);
       results.push({ token, response: fcmData });
     }
 
     res.status(200).json({ success: true, results });
   } catch (err) {
-    console.error(err);
     console.error('❌ Error en send-push API:', err);
-
     res.status(500).json({ success: false, error: err.message });
   }
 }
