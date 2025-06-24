@@ -1,50 +1,34 @@
 import { google } from 'googleapis';
 import fetch from 'node-fetch';
 
-let serviceAccount;
-try {
+const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
+
+function obtenerServiceAccount() {
   const b64Env = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
-  if (!b64Env) throw new Error('Variable de entorno GOOGLE_SERVICE_ACCOUNT_B64 no definida');
+  if (!b64Env) throw new Error('GOOGLE_SERVICE_ACCOUNT_B64 no definida');
 
-  // Decodificación segura desde Base64
   const decodedJson = Buffer.from(b64Env, 'base64').toString('utf8').trim();
-  serviceAccount = JSON.parse(decodedJson);
+  const serviceAccount = JSON.parse(decodedJson);
 
-  // SOLUCIÓN: Limpieza explícita de caracteres escapados "\n"
-  if (serviceAccount.private_key.includes('\\n')) {
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    console.log('🟡 Fix aplicado a private_key para eliminar \\n escapados.');
+  // Fix explícito para saltos de línea
+  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+
+  if (!serviceAccount.private_key.startsWith('-----BEGIN PRIVATE KEY-----')) {
+    throw new Error('La private_key no tiene un formato válido.');
   }
 
-  console.log('🟢 JSON del serviceAccount cargado correctamente desde Base64');
-} catch (err) {
-  console.error('🔴 Error parseando GOOGLE_SERVICE_ACCOUNT_B64:', err.message);
-  serviceAccount = null;
+  return serviceAccount;
 }
 
+async function getAccessToken(serviceAccount) {
+  const jwtClient = new google.auth.JWT({
+    email: serviceAccount.client_email,
+    key: serviceAccount.private_key,
+    scopes: SCOPES
+  });
 
-// Validación inmediata después de cargar
-if (!serviceAccount || !serviceAccount.client_email || !serviceAccount.private_key) {
-  throw new Error('❌ serviceAccount incompleto o mal decodificado.');
-}
-
-console.log('🔑 Email:', serviceAccount.client_email);
-console.log('🔑 Tiene private_key:', !!serviceAccount.private_key);
-console.log('🔑 Project ID:', serviceAccount.project_id);
-
-const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
-const projectId = serviceAccount.project_id;
-
-async function getAccessToken() {
-  const jwtClient = new google.auth.JWT(
-    serviceAccount.client_email,
-    null,
-    serviceAccount.private_key,
-    SCOPES,
-    null
-  );
   const tokens = await jwtClient.authorize();
-  console.log('🟢 Token JWT generado');
+  console.log('🟢 Token JWT generado correctamente');
   return tokens.access_token;
 }
 
@@ -64,13 +48,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Faltan datos requeridos.' });
     }
 
-    const accessToken = await getAccessToken();
-    const url = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    const serviceAccount = obtenerServiceAccount();
+    console.log('🔑 serviceAccount cargado:', {
+      email: serviceAccount.client_email,
+      project: serviceAccount.project_id,
+      keyPreview: serviceAccount.private_key.slice(0, 30) + '...'
+    });
+
+    const accessToken = await getAccessToken(serviceAccount);
+    const url = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
 
     const messages = Array.isArray(tokens) ? tokens : [tokens];
+    const results = [];
 
-    let results = [];
-    for (let token of messages) {
+    for (const token of messages) {
       const message = {
         message: {
           token,
