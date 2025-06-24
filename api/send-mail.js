@@ -41,7 +41,7 @@ export default async (req, res) => {
 
   try {
     await transporter.sendMail({
-      from: `"MaquinaDelMal" <${process.env.MAIL_USER}>`,
+      from: `"Restaurante La Comanda" <${process.env.MAIL_USER}>`,
       to,
       subject,
       text,
