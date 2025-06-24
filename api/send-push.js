@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 const SCOPES = ['https://www.googleapis.com/auth/firebase.messaging'];
 const projectId = serviceAccount.project_id;
+console.log('ServiceAccount env (start):', process.env.GOOGLE_SERVICE_ACCOUNT); // Solo el principio, para no mostrar la clave entera
 
 async function getAccessToken() {
   const jwtClient = new google.auth.JWT(
@@ -23,8 +24,8 @@ export default async function handler(req, res) {
 
   try {
     const { tokens, title, body, data } = req.body; 
-    console.log('🟡Tokens recibidos:', tokens);
-    console.log('🟡Title:', title, 'Body:', body, 'Data:', data);
+    //console.log('🟡Tokens recibidos:', tokens);
+    //console.log('🟡Title:', title, 'Body:', body, 'Data:', data);
 
     if (!tokens || !title || !body) {
       return res.status(400).json({ error: 'Faltan datos requeridos.' });
