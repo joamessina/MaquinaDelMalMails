@@ -10,11 +10,18 @@ try {
   const decodedJson = Buffer.from(b64Env, 'base64').toString('utf8').trim();
   serviceAccount = JSON.parse(decodedJson);
 
+  // SOLUCIÓN: Limpieza explícita de caracteres escapados "\n"
+  if (serviceAccount.private_key.includes('\\n')) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    console.log('🟡 Fix aplicado a private_key para eliminar \\n escapados.');
+  }
+
   console.log('🟢 JSON del serviceAccount cargado correctamente desde Base64');
 } catch (err) {
   console.error('🔴 Error parseando GOOGLE_SERVICE_ACCOUNT_B64:', err.message);
-  serviceAccount = null; // Para evitar errores más adelante
+  serviceAccount = null;
 }
+
 
 // Validación inmediata después de cargar
 if (!serviceAccount || !serviceAccount.client_email || !serviceAccount.private_key) {
