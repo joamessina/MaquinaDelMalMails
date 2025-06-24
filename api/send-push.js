@@ -1,20 +1,18 @@
 import { google } from 'googleapis';
 import fetch from 'node-fetch';
 
-// Leemos el JSON entero del service account desde la variable de entorno
+// Leemos el JSON codificado en Base64 desde la variable de entorno
 let serviceAccount;
 try {
-  serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-  console.log('🟢 JSON del serviceAccount cargado OK');
-} catch (err) {
-  console.error('🔴 Error parseando GOOGLE_SERVICE_ACCOUNT:', err);
-  serviceAccount = {};
-}
+  const b64Env = process.env.GOOGLE_SERVICE_ACCOUNT_B64;
+  if (!b64Env) throw new Error('Variable de entorno GOOGLE_SERVICE_ACCOUNT_B64 no definida');
 
-// Fix para el caso de que los saltos sean literales "\n"
-if (serviceAccount.private_key && serviceAccount.private_key.includes('\\n')) {
-  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  console.log('🟡 Fix aplicado a private_key');
+  const decodedJson = Buffer.from(b64Env, 'base64').toString('utf8');
+  serviceAccount = JSON.parse(decodedJson);
+  console.log('🟢 JSON del serviceAccount cargado correctamente desde Base64');
+} catch (err) {
+  console.error('🔴 Error parseando GOOGLE_SERVICE_ACCOUNT_B64:', err);
+  serviceAccount = {};
 }
 
 // Logs para verificar datos críticos
