@@ -34,6 +34,14 @@ async function getAccessToken(serviceAccount) {
 
 export default async function handler(req, res) {
   console.log('📩 Nueva request recibida:', req.method, req.body);
+  res.setHeader('Access-Control-Allow-Origin', '*'); // o tu dominio específico en producción
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    console.log('✅ Respondido método OPTIONS (preflight CORS)');
+    return res.status(200).end();
+  }
 
   if (req.method !== 'POST') {
     console.warn('⛔ Método no permitido');
